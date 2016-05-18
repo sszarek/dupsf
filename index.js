@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const async = require('async');
 const args = Array.prototype.slice.call(process.argv, 2);
 
 if (args.length === 0) {
@@ -12,6 +13,7 @@ let fileMap = new Map();
 
 processDirectory(dir, err => {
     console.error(err);
+    console.log('end');
 });
 
 function processDirectory(dir, cb) {
@@ -24,13 +26,15 @@ function processDirectory(dir, cb) {
             }
         }
         if (stats.isDirectory()) {
+            console.log(dir);
             fs.readdir(dir, (err, files) => {
-                files.forEach(file => processDirectory(path.join(dir, file), cb));
+                async.each(files, (file, cb) => processDirectory(path.join(dir, file), cb), cb);
             });
         } else if (stats.isFile()) {
+            console.log(dir);
             processFileContents(dir, stats);
+            cb();
         }
-        console.log(dir);
     });
 }
 
