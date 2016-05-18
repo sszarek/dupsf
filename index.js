@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const args = Array.prototype.slice.call(process.argv, 2);
 
 if (args.length === 0) {
@@ -24,7 +25,7 @@ function processDirectory(dir, cb) {
         }
         if (stats.isDirectory()) {
             fs.readdir(dir, (err, files) => {
-                files.forEach(file => processDirectory(file, cb));
+                files.forEach(file => processDirectory(path.join(dir, file), cb));
             });
         } else if (stats.isFile()) {
             processFileContents(dir, stats);
