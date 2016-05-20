@@ -1,0 +1,25 @@
+{
+  "name": "dupsf",
+  "version": "0.0.1",
+  "description": "Duplicate file finder",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sszarek/dupsf.git"
+  },
+  "author": "Stefan Szarek",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sszarek/dupsf/issues"
+  },
+  "homepage": "https://github.com/sszarek/dupsf#readme",
+  "devDependencies": {
+    "mocha": "^2.4.5"
+  },
+  "dependencies": {
+    "async": "^2.0.0-rc.5"
+  }
+}
