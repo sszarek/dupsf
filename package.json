@@ -4,6 +4,7 @@
   "description": "Duplicate file finder",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "mocha"
   },
   "repository": {
