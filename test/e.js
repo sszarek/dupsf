@@ -3,8 +3,6 @@ const path = require('path');
 const async = require('async');
 const args = Array.prototype.slice.call(process.argv, 2);
 
-const BUFFER_SIZE = 128;
-
 if (args.length === 0) {
     console.log('Provide directory name.');
     process.exit(0);
@@ -64,40 +62,29 @@ function findDuplicatesInBuckets(cb) {
         async.whilst(() => bucketFiles.length > 1, compareFiles);
 
         function compareFiles(cb) {
-            let firstPath = bucketFiles.shift();
-            async.eachSeries(bucketFiles, (secondPath, eachCb) => {
-                fs.open(firstPath, 'r', (err, firstFd) => {
+            let firstPath = bucketFiles.pop();
+            
+            fs.open(firstPath, (err, firstFd) => {
+                async.each(bucketFiles, (secondPath, eachCb) => {
                     fs.open(secondPath, 'r', (err, secondFd) => {
-                        console.log(`Comparing: ${firstPath} with ${secondPath}`);
-                        let firstBuffer = new Buffer(BUFFER_SIZE);
-                        let secondBuffer = new Buffer(BUFFER_SIZE);
+                        let firstBuffer = new Buffer();
+                        let secondBuffer = new Buffer();
                         let bytesRead = 0;
-                        let buffersEqual = true;
-                        async.whilst(() => buffersEqual && (bytesRead < fileSize), cb => {
+                        async.whilst(() => bytesRead < fileSize, cb => {
                             async.parallel([
-                                cb => fs.read(firstFd, firstBuffer, 0, BUFFER_SIZE, null, cb),
-                                cb => fs.read(secondFd, secondBuffer, 0, BUFFER_SIZE, null, cb)
+                                cb => fs.read(firstFd, firstBuffer, 0, 1024, null, cb),
+                                cb => fs.read(secondFd, secondBuffer, 0, 1024, null, cb) 
                             ], (err, data) => {
-                                if (err) {
-                                    cb(err);
-                                }
-
-                                if (firstBuffer.compare(secondBuffer) !== 0) {
-                                    buffersEqual = false;
-                                }
-                                bytesRead += data[0][0];
-                                cb();
+                                console.dir(data);
+                                cb(data);
                             });
                         }, () => {
-                            console.log(`Files compared: ${firstPath}, ${secondPath}, equal: ${buffersEqual}`);
-                            async.parallel([
-                                cb => fs.close(firstFd, cb),
-                                cb => fs.close(secondFd, cb)
-                            ], eachCb);
+                            console.log(`Files processed: ${firstPath}, ${secondPath}`);
+                            return eachCb();
                         });
                     });
-                });
-            }, cb);
+                }, cb);
+            });
 
         }
     }, cb);
