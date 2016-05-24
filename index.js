@@ -19,7 +19,10 @@ processDirectory(dir, err => {
         return console.error(err);
     }
 
-    findDuplicatesInBuckets();
+    findDuplicatesInBuckets((err, duplicates) => {
+        duplicates.forEach(bucket => bucket.forEach(console.log));
+        console.log();
+    });
 });
 
 function processDirectory(dir, cb) {
@@ -53,26 +56,27 @@ function addFileToSizeBucket(file, stats) {
 }
 
 function findDuplicatesInBuckets(cb) {
-    async.each(fileMap, (bucket, cb) => {
+    async.each(fileMap, (bucket, eachFileCb) => {
         if (bucket.length === 1) {
-            return cb();
+            return eachFileCb();
         }
 
         let fileSize = bucket[0];
         let bucketFiles = bucket[1];
 
-        async.whilst(() => bucketFiles.length > 1, compareFiles);
+        async.whilst(() => bucketFiles.length > 1, compareFiles, eachFileCb);
 
-        function compareFiles(cb) {
+        function compareFiles(compareCb) {
             let firstPath = bucketFiles.shift();
+            let bucket = [firstPath];
             async.eachSeries(bucketFiles, (secondPath, eachCb) => {
                 fs.open(firstPath, 'r', (err, firstFd) => {
                     fs.open(secondPath, 'r', (err, secondFd) => {
-                        console.log(`Comparing: ${firstPath} with ${secondPath}`);
                         let firstBuffer = new Buffer(BUFFER_SIZE);
                         let secondBuffer = new Buffer(BUFFER_SIZE);
                         let bytesRead = 0;
                         let buffersEqual = true;
+
                         async.whilst(() => buffersEqual && (bytesRead < fileSize), cb => {
                             async.parallel([
                                 cb => fs.read(firstFd, firstBuffer, 0, BUFFER_SIZE, null, cb),
@@ -89,7 +93,10 @@ function findDuplicatesInBuckets(cb) {
                                 cb();
                             });
                         }, () => {
-                            console.log(`Files compared: ${firstPath}, ${secondPath}, equal: ${buffersEqual}`);
+                            if (buffersEqual) {
+                                bucket.push(secondPath);
+                            }
+
                             async.parallel([
                                 cb => fs.close(firstFd, cb),
                                 cb => fs.close(secondFd, cb)
@@ -97,8 +104,15 @@ function findDuplicatesInBuckets(cb) {
                         });
                     });
                 });
-            }, cb);
+            }, () => {
+                if (bucket.length > 1) {
+                    duplicates.push(bucket);
+                }
 
+                compareCb();
+            });
         }
-    }, cb);
+    }, () => { 
+        cb(null, duplicates); 
+    });
 }
