@@ -20,7 +20,7 @@ processDirectory(dir, err => {
     }
 
     findDuplicatesInBuckets((err, duplicates) => {
-        duplicates.forEach(bucket => bucket.forEach(console.log));
+        duplicates.forEach(bucket => bucket.forEach(entry => console.log(entry)));
         console.log();
     });
 });
@@ -107,12 +107,20 @@ function findDuplicatesInBuckets(cb) {
             }, () => {
                 if (bucket.length > 1) {
                     duplicates.push(bucket);
+                    removeFilesFromBucket(bucketFiles, bucket);
                 }
 
                 compareCb();
             });
         }
-    }, () => { 
-        cb(null, duplicates); 
+    }, () => {
+        cb(null, duplicates);
     });
+}
+
+function removeFilesFromBucket(bucket, toRemove) {
+    for(let i = 0; i < toRemove.length; i++) {
+        let index = bucket.indexOf(toRemove[i]);
+        bucket.splice(index, 1);
+    }
 }
