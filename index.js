@@ -64,45 +64,17 @@ function findDuplicatesInBuckets(cb) {
         let fileSize = bucket[0];
         let bucketFiles = bucket[1];
 
-        async.whilst(() => bucketFiles.length > 1, compareFiles, eachFileCb);
+        async.whilst(() => bucketFiles.length > 1, compareFilesInBucket, eachFileCb);
 
-        function compareFiles(compareCb) {
+        function compareFilesInBucket(compareCb) {
             let firstPath = bucketFiles.shift();
             let bucket = [firstPath];
             async.eachSeries(bucketFiles, (secondPath, eachCb) => {
-                fs.open(firstPath, 'r', (err, firstFd) => {
-                    fs.open(secondPath, 'r', (err, secondFd) => {
-                        let firstBuffer = new Buffer(BUFFER_SIZE);
-                        let secondBuffer = new Buffer(BUFFER_SIZE);
-                        let bytesRead = 0;
-                        let buffersEqual = true;
-
-                        async.whilst(() => buffersEqual && (bytesRead < fileSize), cb => {
-                            async.parallel([
-                                cb => fs.read(firstFd, firstBuffer, 0, BUFFER_SIZE, null, cb),
-                                cb => fs.read(secondFd, secondBuffer, 0, BUFFER_SIZE, null, cb)
-                            ], (err, data) => {
-                                if (err) {
-                                    cb(err);
-                                }
-
-                                if (firstBuffer.compare(secondBuffer) !== 0) {
-                                    buffersEqual = false;
-                                }
-                                bytesRead += data[0][0];
-                                cb();
-                            });
-                        }, () => {
-                            if (buffersEqual) {
-                                bucket.push(secondPath);
-                            }
-
-                            async.parallel([
-                                cb => fs.close(firstFd, cb),
-                                cb => fs.close(secondFd, cb)
-                            ], eachCb);
-                        });
-                    });
+                compareFiles(firstPath, secondPath, fileSize, (err, areSame) => {
+                    if(areSame) {
+                        bucket.push(secondPath);
+                    }
+                    eachCb();
                 });
             }, () => {
                 if (bucket.length > 1) {
@@ -118,8 +90,41 @@ function findDuplicatesInBuckets(cb) {
     });
 }
 
+function compareFiles(first, second, size, cb) {
+    fs.open(first, 'r', (err, firstFd) => {
+        fs.open(second, 'r', (err, secondFd) => {
+            let firstBuffer = new Buffer(BUFFER_SIZE);
+            let secondBuffer = new Buffer(BUFFER_SIZE);
+            let bytesRead = 0;
+            let buffersEqual = true;
+
+            async.whilst(() => buffersEqual && (bytesRead < size), cb => {
+                async.parallel([
+                    cb => fs.read(firstFd, firstBuffer, 0, BUFFER_SIZE, null, cb),
+                    cb => fs.read(secondFd, secondBuffer, 0, BUFFER_SIZE, null, cb)
+                ], (err, data) => {
+                    if (err) {
+                        cb(err);
+                    }
+
+                    if (firstBuffer.compare(secondBuffer) !== 0) {
+                        buffersEqual = false;
+                    }
+                    bytesRead += data[0][0];
+                    cb();
+                });
+            }, () => {
+                async.parallel([
+                    cb => fs.close(firstFd, cb),
+                    cb => fs.close(secondFd, cb)
+                ], () => cb(null, buffersEqual));
+            });
+        });
+    });
+}
+
 function removeFilesFromBucket(bucket, toRemove) {
-    for(let i = 0; i < toRemove.length; i++) {
+    for (let i = 0; i < toRemove.length; i++) {
         let index = bucket.indexOf(toRemove[i]);
         bucket.splice(index, 1);
     }
