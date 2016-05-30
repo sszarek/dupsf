@@ -1,5 +1,3 @@
-const fs = require('fs');
-const path = require('path');
 const async = require('async');
 const compare = require('./lib/compare');
 const directory = require('./lib/directory');
